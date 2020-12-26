@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+@import url("https://webgl2fundamentals.org/webgl/resources/webgl-tutorials.css");
+body {
+  margin: 0;
+}
+canvas {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+<div id="uiContainer">
+  <div id="ui">
+	<div id="targetAngle"></div>
+	<div id="targetRadius"></div>
+	<div id="targetHeight"></div>
+	<div id="cameraVerticalDeg"></div>
+	<div id="cameraHorizonDeg"></div>
+	<div id="lightHue"></div>
+	<div id="lightBrightness"></div>
+	<div id="shiness"></div>
+  </div>
+</div>
+<!--
+for most samples webgl-utils only provides shader compiling/linking and
+canvas resizing because why clutter the examples with code that's the same in every sample.
+See https://webgl2fundamentals.org/webgl/lessons/webgl-boilerplate.html
+and https://webgl2fundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
+for webgl-utils, m3, m4, and webgl-lessons-ui.
+-->
+<script src="https://webgl2fundamentals.org/webgl/resources/webgl-utils.js"></script>
+<script src="https://webgl2fundamentals.org/webgl/resources/webgl-lessons-ui.js"></script>
+<script src="https://webgl2fundamentals.org/webgl/resources/m4.js"></script>
+<script src="https://webgl2fundamentals.org/webgl/resources/twgl-full.min.js"></script>
+<script src="https://webgl2fundamentals.org/webgl/resources/chroma.min.js"></script>
+
+<script>
+"use strict";
+var vs = `#version 300 es
+uniform mat4 u_worldViewProjection;
+uniform vec3 u_lightWorldPos;
+uniform mat4 u_world;
+uniform mat4 u_viewInverse;
+uniform mat4 u_worldInverseTranspose;
+
+in vec4 a_position;
+in vec3 a_normal;
+in vec2 a_texcoord;
+
+out vec2 v_texCoord;
+out vec3 v_normal;
+out vec3 v_surfaceToLight;
+out vec3 v_surfaceToView;
+
+void main() {
+  v_texCoord = a_texcoord;
+  gl_Position = (u_worldViewProjection * a_position);
+  v_normal = (u_worldInverseTranspose * vec4(a_normal, 0)).xyz;
+  v_surfaceToLight = u_lightWorldPos - (u_world * a_position).xyz;
+  v_surfaceToView = (u_viewInverse[3] - (u_world * a_position)).xyz;
+}
+`;
+
+var fs = `#version 300 es
+precision highp float;
+
+in vec2 v_texCoord;
+in vec3 v_normal;
+in vec3 v_surfaceToLight;
+in vec3 v_surfaceToView;
+
+uniform vec4 u_lightColor;
+uniform sampler2D u_diffuse;
+uniform vec4 u_specular;
+uniform float u_shininess;
+uniform float u_specularFactor;
+uniform vec3 u_lightDirection;
+uniform float u_innerLimit;			 // in dot space
+uniform float u_outerLimit;			 // in dot space
+uniform int isBack;
+uniform vec4 u_color;
+
+
+out vec4 outColor;
+
+vec4 lit(float l ,float h, float m, float inLight) {
+  return vec4(1.0,
+			  abs(l),
+			  (l > 0.0) ? pow(max(0.0, h)*inLight, m) : 0.0,
+			  1.0);
+}
+
+void main() {
+	if (isBack==1){
+		outColor = texture(u_diffuse, v_texCoord);
+		outColor.rgb *= 0.5;
+		return;
+	}
+	else if (isBack == 2){
+		outColor = u_color;
+		return;
+	}
+	vec4 diffuseColor = texture(u_diffuse, v_texCoord);
+	vec3 a_normal = normalize(v_normal);
+	vec3 surfaceToLight = normalize(v_surfaceToLight);
+	vec3 surfaceToView = normalize(v_surfaceToView);
+	vec3 halfVector = normalize(surfaceToLight + surfaceToView);
+	
+	vec3 u_lightDirectionN = normalize(u_lightDirection);
+	float dotFromDirection = dot(surfaceToLight,
+								-u_lightDirectionN);
+	float inLight = smoothstep(u_outerLimit, u_innerLimit, dotFromDirection);
+	
+	vec4 litR = lit(dot(a_normal, surfaceToLight)*inLight,
+						dot(a_normal, halfVector), u_shininess, inLight);
+						
+						
+	outColor = vec4((
+		 (u_lightColor * diffuseColor * litR.y +
+				u_specular * litR.z * u_specularFactor)).rgb,
+		diffuseColor.a);
+	
+	
+}
+`;
+
+function main() {
+  // Get A WebGL context
+  var gl = document.querySelector('canvas').getContext('webgl2');
+  if (!gl) {
+	return;
+  }
+  
+  twgl.setAttributePrefix("a_");
+  
+  // Use our boilerplate utils to compile the shaders and link into a program
+  var programInfo = twgl.createProgramInfo(gl,
+	  [vs, fs]);
+	  
+	var arrays = {
+		position: { data: [
+			-40,-40,0,
+			-40,40,0,
+			40,-40,0,
+			
+			40,40,0,
+			40,-40,0,
+			-40,40,0,
+		], numComponents: 3, },
+		texcoord: { data: [
+			0, 0,
+			1, 0,
+			0, 1,
+			
+			1, 1,
+			0, 1,
+			1, 0,
+		], numComponents: 2, },
+		normal:	  { data: [
+			0, 0, -1,
+			0, 0, -1,
+			0, 0, -1,
+			0, 0, -1,
+			0, 0, -1,
+			0, 0, -1,
+		],numComponents: 3, },
+	};
+	var arrays1 = {
+		position: { data: [
+			-40,-40,0,
+			40,-40,0,
+			-40,40,0,
+			
+			40,40,0,
+			-40,40,0,
+			40,-40,0,
+		], numComponents: 3, },
+		texcoord: { data: [
+			0, 0,
+			1, 0,
+			0, 1,
+			
+			1, 1,
+			0, 1,
+			1, 0,
+		], numComponents: 2, },
+		normal:	  { data: [
+			0, 0, -1,
+			0, 0, -1,
+			0, 0, -1,
+			0, 0, -1,
+			0, 0, -1,
+			0, 0, -1,
+		],numComponents: 3, },
+	};
+	
+	var arrays2 = {
+		position: { data: [
+			0, 0,  30,
+			0, 0,  0,
+			
+			0, 0,  30,
+			0, 10, 0,
+			
+			0, 0,  30,
+			0, -10, 0,
+			
+			0, 0,  30,
+			10, 0, 0,
+			
+			0, 0,  30,
+			-10, 0, 0,
+			
+			-10, 0, 0,
+			10, 0, 0,
+			
+			0, -10, 0,
+			0, 10, 0,
+		],numComponents: 3, }
+	}
+	
+	var arrays3 = {
+		position: { data: [
+			-42,-42,0,
+			42,-42,0,
+			
+			42,-42,0,
+			42,42,0,
+			
+			42,42,0,
+			-42,42,0,
+			
+			-42,42,0,
+			-42,-42,0,
+		],numComponents: 3, }
+	}
+	
+	var bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
+	var vao = twgl.createVAOFromBufferInfo(
+	gl, programInfo, bufferInfo);
+	
+	var bufferInfo1 = twgl.createBufferInfoFromArrays(gl, arrays1);
+	var vao1 = twgl.createVAOFromBufferInfo(
+	gl, programInfo, bufferInfo1);
+	
+	var bufferInfo2 = twgl.createBufferInfoFromArrays(gl, arrays2);
+	var vao2 = twgl.createVAOFromBufferInfo(
+	gl, programInfo, bufferInfo2);
+	
+	var bufferInfo3 = twgl.createBufferInfoFromArrays(gl, arrays3);
+	var vao3 = twgl.createVAOFromBufferInfo(
+	gl, programInfo, bufferInfo3);
+	
+	var texture = gl.createTexture();
+	gl.activeTexture(gl.TEXTURE0 + 0);
+	
+	var image = new Image();
+		image.src = "UV_Grid_Sm.jpg";
+		image.addEventListener('load', function() {
+		// Now that the image has loaded make copy it to the texture.
+		gl.bindTexture(gl.TEXTURE_2D, texture);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+		gl.generateMipmap(gl.TEXTURE_2D);
+		drawScene();
+	});
+
+
+	function radToDeg(r) {
+		return r * 180 / Math.PI;
+	}
+
+	function degToRad(d) {
+		return d * Math.PI / 180;
+	}
+
+	var target = [0, 150, 0];
+	var targetAngleRadians = 0;
+	var targetRadius = 300;
+	var cameraRadius = 750;
+	var fieldOfViewRadians = degToRad(60);
+	var shininess = 150;
+	var lightRotationX = 0;
+	var lightRotationY = 0;
+	var lightDirection = [1, 0, 0];  // this is computed in updateScene
+	var cameraV = 30;
+	var cameraH = 60;
+	var cameraPosition = [0, 0, 0];
+	var up = [0, 1, 0];
+	var lightHue = 125;
+	var lightBrightness = 150;
+	var shiness = 128
+	var isMouseDown = false;
+	var mousePosSave = [0,0];
+	
+	gl.canvas.addEventListener("mousedown", (e) => {
+		isMouseDown = true;
+	})
+	gl.canvas.addEventListener("mouseup", (e) => {
+		isMouseDown = false;
+	})
+	gl.canvas.addEventListener("mousemove", (e) => {
+		if (isMouseDown){
+			cameraH += (mousePosSave[0] - e.clientX)/2;
+			cameraV -= (mousePosSave[1] - e.clientY)/2;
+			cameraH += 360;
+			cameraH %= 360;
+			if (cameraV < -89){
+				cameraV = -89;
+			}
+			else if (cameraV > 89){
+				cameraV = 89;
+			}
+			webglLessonsUI.setupSlider("#cameraVerticalDeg", {value: cameraV, slide: updateCameraVRadrus, min: -89, max: 89});
+			webglLessonsUI.setupSlider("#cameraHorizonDeg", {value: cameraH, slide: updateCameraHRadrus, min: 0, max: 360});
+		}
+		mousePosSave[0] = e.clientX;
+		mousePosSave[1] = e.clientY;
+		drawScene();
+	})
+	
+	// Setup a ui.
+	webglLessonsUI.setupSlider("#targetAngle", {value: radToDeg(targetAngleRadians), slide: updateTargetAngle, min: -360, max: 360});
+	webglLessonsUI.setupSlider("#targetRadius", {value: targetRadius, slide: updateTargetRadrus, min: 1, max: 700});
+	webglLessonsUI.setupSlider("#targetHeight", {value: target[1], slide: updateTargetHeight, min: 50, max: 300});
+	webglLessonsUI.setupSlider("#cameraVerticalDeg", {value: cameraV, slide: updateCameraVRadrus, min: -89, max: 89});
+	webglLessonsUI.setupSlider("#cameraHorizonDeg", {value: cameraH, slide: updateCameraHRadrus, min: 0, max: 360});
+	webglLessonsUI.setupSlider("#lightHue", {value: lightHue, slide: updateLightHue, min: 0, max: 360});
+	webglLessonsUI.setupSlider("#lightBrightness", {value: lightBrightness, slide: updateLightBrightness, min: 0, max: 255});
+	webglLessonsUI.setupSlider("#shiness", {value: shiness, slide: updateShiness, min: 1, max: 255});
+	
+	function updateLightHue(event, ui){
+		lightHue = ui.value;
+		drawScene();
+	}
+	
+	function updateShiness(event, ui){
+		shiness = ui.value;
+		drawScene();
+	}
+	
+	function updateLightBrightness(event, ui){
+		lightBrightness = ui.value;
+		drawScene();
+	}
+	
+	function updateTargetAngle(event, ui) {
+		targetAngleRadians = degToRad(ui.value);
+		drawScene();
+	}
+
+	function updateTargetRadrus(event, ui) {
+		targetRadius = ui.value;
+		drawScene();
+	}
+
+	function updateTargetHeight(event, ui) {
+		target[1] = ui.value;
+		drawScene();
+	}
+
+	function updateCameraVRadrus(event, ui) {
+		cameraV = ui.value;
+		drawScene();
+	}
+	function updateCameraHRadrus(event, ui) {
+		cameraH = ui.value;
+		drawScene();
+	}
+
+	function updateRotation(event, ui) {
+		fRotationRadians = degToRad(ui.value);
+		drawScene();
+	}
+
+	// Draw the scene.
+	function drawScene() {
+		var numFs = 5;
+		var radius = 600;
+		
+		twgl.resizeCanvasToDisplaySize(gl.canvas);
+	
+		// Tell WebGL how to convert from clip space to pixels
+		gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+/*	
+		// Clear the canvas AND the depth buffer.
+		gl.clearColor(0, 0, 0, 0);
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);*/
+	
+		// turn on depth testing
+		gl.enable(gl.DEPTH_TEST);
+	
+		// tell webgl to cull faces
+		gl.enable(gl.CULL_FACE);
+	
+		// Tell it to use our program (pair of shaders)
+		gl.useProgram(programInfo.program);
+	
+		// Bind the attribute/buffer set we want.
+		//gl.bindVertexArray(vao);
+		
+		// Compute the matrix
+		var aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+		var zNear = 1;
+		var zFar = 2000;
+		var projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
+	
+		
+	
+		// Compute the camera's matrix using look at.
+		
+		var m1 = m4.multiply(m4.xRotation(degToRad(cameraV)),m4.yRotation(degToRad(-cameraH)));
+		var cameraMatrix = m4.lookAt([m1[2]* cameraRadius,m1[6]* cameraRadius,m1[10]* cameraRadius], [0,0,0], up);
+		// Make a view matrix from the camera matrix.
+		var viewMatrix = m4.inverse(cameraMatrix);
+	
+		// create a viewProjection matrix. This will both apply perspective
+		// AND move the world so that the camera is effectively the origin
+		var viewProjectionMatrix = m4.multiply(projectionMatrix, viewMatrix);
+	
+		// Draw heads in a grid
+		{
+		
+			target[0] = Math.sin(targetAngleRadians) * targetRadius;
+			target[2] = Math.cos(targetAngleRadians) * targetRadius;
+			var matrix = m4.lookAt(target, [0,0,0], up);
+			var matrix1 = m4.multiply(viewProjectionMatrix, matrix);
+			
+			// get the zAxis from the matrix
+			// negate it because lookAt looks down the -Z axis
+			lightDirection = [-matrix[8], -matrix[9], -matrix[10]];
+		}
+	
+		var uniformsSameForAllObjects = {
+			u_lightWorldPos :			target,
+			u_viewInverse :				cameraMatrix,
+			u_lightColor :				chroma.hsv(lightHue, 0.75, lightBrightness/255).gl(),
+			u_specular :				[1, 1, 1, 1],
+			u_shininess :				shiness,
+			u_specularFactor :			1,
+			u_diffuse :					texture,
+			u_lightDirection :			lightDirection,
+			u_innerLimit :				Math.cos(degToRad(30)),
+			u_outerLimit :				Math.cos(degToRad(60)),
+		};
+		
+		twgl.setUniforms(programInfo, uniformsSameForAllObjects);
+		
+		
+		var deep = 15;
+		var across = 15;
+		for (var zz = 0; zz < deep; ++zz) {
+		var v = zz / (deep - 1);
+		var z = (v - .5) * deep * 150;
+		for (var xx = 0; xx < across; ++xx) {
+			var u = xx / (across - 1);
+			var x = (u - .5) * across * 150;
+			var matrix = m4.lookAt([x, 0, z], target, up);
+			m4.translate(matrix, 0, 0, 0, matrix);
+			var matrix1 = m4.multiply(viewProjectionMatrix, matrix);
+			var matrix2 = m4.transpose(m4.inverse(matrix));
+			//console.log(matrix1);
+			var materialUniforms = {
+				u_world : matrix,
+				u_worldViewProjection : matrix1,
+				u_worldInverseTranspose : matrix2,
+				isBack : 0,
+			};
+			
+			twgl.setUniforms(programInfo, materialUniforms);
+			gl.bindVertexArray(vao);
+			twgl.drawBufferInfo(gl, bufferInfo);
+			
+			var materialUniforms1 = {
+				u_world : matrix,
+				u_worldViewProjection : matrix1,
+				u_worldInverseTranspose : matrix2,
+				isBack : 1,
+			};
+			twgl.setUniforms(programInfo, materialUniforms1);
+			gl.bindVertexArray(vao1);
+			twgl.drawBufferInfo(gl, bufferInfo1);
+			
+			gl.bindVertexArray(vao3);
+			twgl.drawBufferInfo(gl, bufferInfo3, gl.LINES);
+		}
+		}
+		
+		var matrix1 = m4.lookAt(target, [0,0,0], up);
+		var matrix1 = m4.multiply(viewProjectionMatrix, matrix1);
+		var materialUniforms = {
+				u_world : matrix1,
+				u_worldViewProjection : matrix1,
+				u_worldInverseTranspose : matrix1,
+				isBack : 2,
+				u_color : [0.8,0,0,1]
+		};
+		
+		twgl.setUniforms(programInfo, materialUniforms);
+		
+		gl.bindVertexArray(vao2);
+		twgl.drawBufferInfo(gl, bufferInfo2, gl.LINES);
+	}
+	
+	
+	
+}
+
+
+main();
+</script>
+
+</body>
+
+
+</html>
