@@ -285,7 +285,6 @@ function main() {
 	var targetRadius = 300;
 	var cameraRadius = 750;
 	var fieldOfViewRadians = degToRad(60);
-	var shininess = 150;
 	var lightRotationX = 0;
 	var lightRotationY = 0;
 	var lightDirection = [1, 0, 0];  // this is computed in updateScene
@@ -294,7 +293,7 @@ function main() {
 	var cameraPosition = [0, 0, 0];
 	var up = [0, 1, 0];
 	var lightHue = 125;
-	var lightBrightness = 150;
+	var lightBrightness = 125;
 	var shiness = 128
 	var isMouseDown = false;
 	var mousePosSave = [0,0];
@@ -381,9 +380,6 @@ function main() {
 
 	// Draw the scene.
 	function drawScene() {
-		var numFs = 5;
-		var radius = 600;
-		
 		twgl.resizeCanvasToDisplaySize(gl.canvas);
 	
 		// Tell WebGL how to convert from clip space to pixels
