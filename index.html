@@ -485,7 +485,6 @@ function main() {
 			var u = xx / (across - 1);
 			var x = (u - .5) * across * 150;
 			var matrix = m4.lookAt([x, 0, z], target, up);
-			m4.translate(matrix, 0, 0, 0, matrix);
 			var matrix1 = m4.multiply(viewProjectionMatrix, matrix);
 			var matrix2 = m4.transpose(m4.inverse(matrix));
 			//console.log(matrix1);
@@ -515,12 +514,13 @@ function main() {
 		}
 		}
 		
-		var matrix1 = m4.lookAt(target, [0,0,0], up);
-		var matrix1 = m4.multiply(viewProjectionMatrix, matrix1);
+		var matrix = m4.lookAt(target, [0,0,0], up);
+		var matrix1 = m4.multiply(viewProjectionMatrix, matrix);
+		var matrix2 = m4.transpose(m4.inverse(matrix));
 		var materialUniforms = {
-				u_world : matrix1,
+				u_world : matrix,
 				u_worldViewProjection : matrix1,
-				u_worldInverseTranspose : matrix1,
+				u_worldInverseTranspose : matrix2,
 				isBack : 2,
 				u_color : [0.8,0,0,1]
 		};
