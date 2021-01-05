@@ -26,6 +26,8 @@ canvas {
 	<div id="lightHue"></div>
 	<div id="lightBrightness"></div>
 	<div id="shiness"></div>
+	<div id="inner"></div>
+	<div id="outer"></div>
   </div>
 </div>
 <!--
@@ -297,6 +299,8 @@ function main() {
 	var shiness = 128
 	var isMouseDown = false;
 	var mousePosSave = [0,0];
+	var inner = 30;
+	var outer = 60;
 	
 	gl.canvas.addEventListener("mousedown", (e) => {
 		isMouseDown = true;
@@ -346,6 +350,8 @@ function main() {
 	webglLessonsUI.setupSlider("#lightHue", {value: lightHue, slide: updateLightHue, min: 0, max: 360});
 	webglLessonsUI.setupSlider("#lightBrightness", {value: lightBrightness, slide: updateLightBrightness, min: 0, max: 255});
 	webglLessonsUI.setupSlider("#shiness", {value: shiness, slide: updateShiness, min: 1, max: 255});
+	webglLessonsUI.setupSlider("#inner", {value: inner, slide: updateInner, min: 0, max: 180});
+	webglLessonsUI.setupSlider("#outer", {value: outer, slide: updateOuter, min: 0, max: 180});
 	
 	function updateLightHue(event, ui){
 		lightHue = ui.value;
@@ -354,6 +360,14 @@ function main() {
 	
 	function updateShiness(event, ui){
 		shiness = ui.value;
+		drawScene();
+	}
+	function updateInner(event, ui){
+		inner = ui.value;
+		drawScene();
+	}
+	function updateOuter(event, ui){
+		outer = ui.value;
 		drawScene();
 	}
 	
@@ -455,8 +469,8 @@ function main() {
 			u_specularFactor :			1,
 			u_diffuse :					texture,
 			u_lightDirection :			lightDirection,
-			u_innerLimit :				Math.cos(degToRad(30)),
-			u_outerLimit :				Math.cos(degToRad(60)),
+			u_innerLimit :				Math.cos(degToRad(inner)),
+			u_outerLimit :				Math.cos(degToRad(outer)),
 		};
 		
 		twgl.setUniforms(programInfo, uniformsSameForAllObjects);
