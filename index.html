@@ -453,7 +453,6 @@ function main() {
 			target[0] = Math.sin(targetAngleRadians) * targetRadius;
 			target[2] = Math.cos(targetAngleRadians) * targetRadius;
 			var matrix = m4.lookAt(target, [0,0,0], up);
-			var matrix1 = m4.multiply(viewProjectionMatrix, matrix);
 			
 			// get the zAxis from the matrix
 			// negate it because lookAt looks down the -Z axis
