@@ -324,12 +324,25 @@ function main() {
 		drawScene();
 	})
 	
+	gl.canvas.addEventListener("wheel", (e) => {
+		cameraRadius += e.deltaY/10;
+		if (cameraRadius <= 1){
+			cameraRadius = 1;
+		}
+		else if (cameraRadius >= 2000){
+			cameraRadius = 2000;
+		}
+		webglLessonsUI.setupSlider("#cameraRadius", {value: cameraRadius, slide: updateCameraHRadrus, min: 1, max: 2000});
+		drawScene();
+	})
+	
 	// Setup a ui.
 	webglLessonsUI.setupSlider("#targetAngle", {value: radToDeg(targetAngleRadians), slide: updateTargetAngle, min: -360, max: 360});
 	webglLessonsUI.setupSlider("#targetRadius", {value: targetRadius, slide: updateTargetRadrus, min: 1, max: 700});
 	webglLessonsUI.setupSlider("#targetHeight", {value: target[1], slide: updateTargetHeight, min: 50, max: 300});
 	webglLessonsUI.setupSlider("#cameraVerticalDeg", {value: cameraV, slide: updateCameraVRadrus, min: -89, max: 89});
 	webglLessonsUI.setupSlider("#cameraHorizonDeg", {value: cameraH, slide: updateCameraHRadrus, min: 0, max: 360});
+	webglLessonsUI.setupSlider("#cameraRadius", {value: cameraRadius, slide: updateCameraHRadrus, min: 1, max: 2000});
 	webglLessonsUI.setupSlider("#lightHue", {value: lightHue, slide: updateLightHue, min: 0, max: 360});
 	webglLessonsUI.setupSlider("#lightBrightness", {value: lightBrightness, slide: updateLightBrightness, min: 0, max: 255});
 	webglLessonsUI.setupSlider("#shiness", {value: shiness, slide: updateShiness, min: 1, max: 255});
