@@ -23,6 +23,7 @@ canvas {
 	<div id="targetHeight"></div>
 	<div id="cameraVerticalDeg"></div>
 	<div id="cameraHorizonDeg"></div>
+	<div id="cameraRadius"></div>
 	<div id="lightHue"></div>
 	<div id="lightBrightness"></div>
 	<div id="shiness"></div>
@@ -346,7 +347,7 @@ function main() {
 	webglLessonsUI.setupSlider("#targetHeight", {value: target[1], slide: updateTargetHeight, min: 50, max: 300});
 	webglLessonsUI.setupSlider("#cameraVerticalDeg", {value: cameraV, slide: updateCameraVRadrus, min: -89, max: 89});
 	webglLessonsUI.setupSlider("#cameraHorizonDeg", {value: cameraH, slide: updateCameraHRadrus, min: 0, max: 360});
-	webglLessonsUI.setupSlider("#cameraRadius", {value: cameraRadius, slide: updateCameraHRadrus, min: 1, max: 2000});
+	webglLessonsUI.setupSlider("#cameraRadius", {value: cameraRadius, slide: updateCameraRadrus, min: 1, max: 2000});
 	webglLessonsUI.setupSlider("#lightHue", {value: lightHue, slide: updateLightHue, min: 0, max: 360});
 	webglLessonsUI.setupSlider("#lightBrightness", {value: lightBrightness, slide: updateLightBrightness, min: 0, max: 255});
 	webglLessonsUI.setupSlider("#shiness", {value: shiness, slide: updateShiness, min: 1, max: 255});
@@ -397,6 +398,12 @@ function main() {
 	}
 	function updateCameraHRadrus(event, ui) {
 		cameraH = ui.value;
+		drawScene();
+	}
+	
+	
+	function updateCameraRadrus(event, ui) {
+		cameraRadius = ui.value;
 		drawScene();
 	}
 
